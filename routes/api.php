@@ -2,7 +2,7 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-// use App\Http\Controllers\Usercontroller;
+use App\Http\Controllers\Photoscontroller;
 
 /*
 |--------------------------------------------------------------------------
@@ -21,3 +21,4 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 // Route::post('/signup', [UserController::class,'signup']);
 // Route::post('/login', [UserController::class,'login']);
 // Route::get('/logout', [UserController::class,'logout']);
+// Route::post('upload', [PhotosController::class,'uploadPhoto'])->middleware('EnsureToken');

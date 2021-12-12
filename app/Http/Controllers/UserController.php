@@ -7,11 +7,15 @@ use App\Services\Database;
 use Exception;
 use Illuminate\Support\Facades\hash;
 use App\Services\JwtAuthentication;
+use App\Http\Requests\SignupRequest;
+use App\Http\Requests\LoginRequest;
+use App\Http\Requests\ProfileUpdateRequest;
+use App\Http\Requests\ForgotPassRequest;
 
 class UserController extends Controller
 {
     //User SignUp
-    public function signup(Request $request)
+    public function signup(SignupRequest $request)
     {
 
 
@@ -19,7 +23,7 @@ class UserController extends Controller
             // get connection
             $connection = new Database('users');
             $db = $connection->getConnection();
-
+            $validated = $request->validated();
             $password = bcrypt($request->password);
             $email_exists = $db->findOne(['email' => $request->email]);
             if (!$email_exists) {
@@ -36,7 +40,7 @@ class UserController extends Controller
             } else {
                 return response()->error(['message' => 'User Already Exist'], 403);
             }
-            UserController::sendEmail($request->name, $request->email);
+            UserController::sendEmail($validated['name'], $validated['email']);
 
             return response()->success([
                 'message' => 'User successfully registered',
@@ -70,7 +74,7 @@ class UserController extends Controller
             $connection = new Database('users');
             $db = $connection->getConnection();
             $user_data = $db->findOne(['email' => $email]);
-            // dd($data['verify']);
+
             if (isset($user_data['verify'])) {
                 return response()->success(['message' => 'Your account has been verified'], 200);
             } else {
@@ -89,56 +93,30 @@ class UserController extends Controller
 
 
     // User Login
-    public function login(Request $request)
+    public function login(LoginRequest $request)
     {
         try {
             //get Connection
             $connection = new Database('users');
             $db = $connection->getConnection();
             $user_data = $db->findOne(['email' => $request->email]);
+            $user = array(
+                "id" => (string)$user_data->_id,
+                "profile_pic" => $user_data->profile_pic,
+                "name" => $user_data->name,
+                "email" => $user_data->email,
+                "password" => $request->password,
+            );
 
-            if (!empty($user_data)) {
+            $jwt = new JwtAuthentication;
+            $token = $jwt->jwt_encode($user);
+            $db->updateOne(['email' => $request->email], ['$set' => ['jwt_token' => $token]]);
 
-                if (Hash::check($request->password, $user_data->password)) {
-
-                    $user = array(
-                        "id" => (string)$user_data->_id,
-                        "profile_pic" => $user_data->profile_pic,
-                        "name" => $user_data->name,
-                        "email" => $user_data->email,
-                        "password" => $request->password,
-                    );
-                    // check condition for verified email
-                    if (isset($user_data['verify'])) {
-
-                        $jwt = new JwtAuthentication;
-                        $token = $jwt->jwt_encode($user);
-                        $db->updateOne(['email' => $request->email], ['$set' => ['jwt_token' => $token]]);
-
-                        return response()->success([
-                            'message' => 'User successfully Loged In',
-                            'user' => $user,
-                            'token' => $token,
-                        ], 200);
-                    } else {
-
-                        UserController::sendEmail($user_data['name'], $user_data['email']);
-
-                        return response()->error([
-                            'message' => 'User email not verified Please Check Your email to verify',
-
-                        ], 400);
-                    }
-                } else {
-                    return response()->error([
-                        'message' => 'incorrect Password',
-                    ], 404);
-                }
-            } else {
-                return response()->error([
-                    'message' => 'User Not Found',
-                ], 404);
-            }
+            return response()->success([
+                'message' => 'User successfully Loged In',
+                'user' => $user,
+                'token' => $token,
+            ], 200);
         } catch (Exception $e) {
             return response()->error($e, 404);
         }
@@ -156,6 +134,111 @@ class UserController extends Controller
             $db = $connection->getConnection();
             $db->updateOne(['jwt_token' => $token], ['$unset' => ['jwt_token' => null]]);
             return response()->success(['message' => 'Logout Successfully!!'], 200);
+        } catch (\Exception $e) {
+            return response()->error(['error' => $e->getMessage()], 500);
+        }
+    }
+
+
+    // Forget password
+    public function forgotPassword(ForgotPassRequest $request)
+    {
+        try {
+            $connection = new Database('users');
+            $db = $connection->getConnection();
+            $forgetpass = $db->findone(['email' => $request->email]);
+            // dd($forgetpass);
+
+            $string = "ABC";
+            $password = substr(str_shuffle(str_repeat($string, 12)), 0, 12);
+            $forgetpass->password = ($password);
+
+            $details['link'] = url('user/resetpass/' . $forgetpass->password . '/' . $forgetpass->email . '/');
+            \Mail::to($request->email)->send(new \App\Mail\ForgotPassword($details));
+            if ($details) {
+                $success['message'] =  "New Password Send to Your Mail";
+                return response()->success([$success, 200]);
+            } else {
+                $success['message'] =  "Something went wrong";
+                return response()->error($success, 404);
+            }
+        } catch (\Exception $e) {
+            return response()->error($e->getMessage(), 400);
+        }
+    }
+
+    //Reset Password
+    public function resetPassword($password, $email)
+    {
+        try {
+            $new_pass = bcrypt($password);
+            $connection = new Database('users');
+            $db = $connection->getConnection();
+            $user_data = $db->updateOne(
+                ['email' => $email],
+                ['$set' => ['password' => $new_pass]]
+            );
+            // echo $password;
+            // dd($user_data);
+            if ($user_data) {
+                return response()->success([
+                    'message' => 'Your password has been set',
+                    'password' => $password
+                ], 200);
+            } else {
+                return response()->error(['message' => 'Someting went Wrong'], 400);
+            }
+        } catch (\Exception $e) {
+            return response()->error($e->getMessage(), 400);
+        }
+    }
+
+
+
+    // Profile Update
+    public function updateProfile(ProfileUpdateRequest $request, $id)
+    {
+        try {
+            $connection = new Database('users');
+            $db = $connection->getConnection();
+            $user_exist = (array)$db->findOne([
+                '_id' => new \MongoDB\BSON\ObjectId("$id")
+            ]);
+
+            $user_exist['name'] = $request->input('name');
+            $user_exist['email'] = $request->input('email');
+            $user_exist['password'] = bcrypt($request->input('password'));
+            // $user_exist['password'] = $request->input('password');
+            $user_exist['age'] = $request->input('age');
+            // $user_exist['profile_pic'] =
+            $input = $request;
+            $fileName = null;
+            if (!empty($input['profile_pic'])) {
+
+                $fileName = time() . '_' . $request->profile_pic->getClientOriginalName();
+                $filePath = $request->profile_pic->storeAs('uploads', $fileName, 'public');
+                $user_exist['profile_pic'] = '/storage/' . $filePath;
+            }
+            // dd($fileName);
+            $update = $db->updateOne(
+                ['_id' => new \MongoDB\BSON\ObjectId("$id")],
+                [
+                    '$set' => $user_exist
+                ]
+            );
+
+            // dd($user_exist);
+            if ($update->getModifiedCount()) {
+                return response()->success([
+                    'message' => 'User Updated',
+                    'data' => $user_exist,
+                ], 200);
+            } else {
+                return response()->error([
+                    'message' => 'Something Went Wrong',
+                    'data' => $user_exist
+                ], 404);
+            }
         } catch (\Exception $e) {
             return response()->error(['error' => $e->getMessage()], 500);
         }

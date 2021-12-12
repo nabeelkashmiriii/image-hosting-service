@@ -19,6 +19,10 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
 Route::post('/signup', [UserController::class,'signup']);
-Route::post('/login', [UserController::class,'login']);
+Route::post('/login', [UserController::class,'login'])->middleware('validated');
 Route::get('/logout', [UserController::class,'logout']);
 Route::get('/verifyEmail/{email}',[UserController::class,'verify']);
+Route::post('password/email', [UserController::class, 'forgot']);
+Route::put('update/profile/{id}', [UserController::class, 'updateProfile'])->middleware('EnsureToken');
+Route::post('/forgot', [UserController::class,'forgotPassword']);
+Route::get('/resetpass/{password}/{email}',[UserController::class,'resetPassword']);

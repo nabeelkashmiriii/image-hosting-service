@@ -204,13 +204,10 @@ class UserController extends Controller
             $user_exist = (array)$db->findOne([
                 '_id' => new \MongoDB\BSON\ObjectId("$id")
             ]);
-
             $user_exist['name'] = $request->input('name');
             $user_exist['email'] = $request->input('email');
             $user_exist['password'] = bcrypt($request->input('password'));
-            // $user_exist['password'] = $request->input('password');
             $user_exist['age'] = $request->input('age');
-            // $user_exist['profile_pic'] =
             $input = $request;
             $fileName = null;
             if (!empty($input['profile_pic'])) {

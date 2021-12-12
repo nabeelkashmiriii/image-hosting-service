@@ -18,8 +18,9 @@ use App\Http\Controllers\PhotosController;
 Route::middleware('EnsureToken')->group(function () {
     Route::post('upload/photo', [PhotosController::class, 'uploadPhoto']);
     Route::delete('delete/photo', [PhotosController::class, 'deletePhoto']);
-    Route::put('makepublic/photo', [PhotosController::class, 'makePublic']);
+    Route::put('setprivacy/photo', [PhotosController::class, 'setPrivacy']);
     Route::get('list/photos', [PhotosController::class, 'listAllPhotos']);
+    Route::get('search/photos', [PhotosController::class, 'searchPhoto']);
 });
 // Route::post('upload/Photo', [PhotosController::class,'uploadPhoto'])->middleware('EnsureToken');
 //

@@ -15,7 +15,7 @@ class JwtAuthentication{
             "iss" => "http://localhost.com",
             "aud" => "http://localhost.com",
             "iat" => time(),
-            "exp" => time() + 3600,
+            // "exp" => time() + 3600,
             "data" => $data
         );
         try {

@@ -25,6 +25,7 @@ class ProfileUpdateRequest extends FormRequest
      */
     public function rules()
     {
+    // dd(request()->all());
         return [
             //
             'profile_pic' => 'mimes:jpg,png,|max:10000',

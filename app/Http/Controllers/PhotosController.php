@@ -24,12 +24,17 @@ class PhotosController extends Controller
             $db = $connection->getConnection();
             // dd($validator["photo"]);
 
-            $fileName = time() . '_' . $validator["photo"]->getClientOriginalName();
+            $fileName = $validator["photo"]->getClientOriginalName();
             $filePath = $validator["photo"]->storeAs('uploads', $fileName, 'public');
+            $pathInfo = pathinfo($filePath);
+            // dd(pathinfo($filePath));
 
             $upload_photo = $db->insertOne([
                 'photo' => '/storage/' . $filePath,
-                'privacy' => 0,
+                'pathInfo' => $pathInfo,
+                'privacy' => "hidden",
+                // 'private' => false,
+                // 'public' => false,
                 'user_id' => $decoded_data->data->id,
                 'created_at' => date(DATE_RFC2822),
             ]);
@@ -75,26 +80,52 @@ class PhotosController extends Controller
     }
 
     // Make Photo Public
-    public function makePublic(Request $request)
+    public function setPrivacy(Request $request)
     {
         try {
             // Get Connection
             $connection = new Database('photos');
             $db = $connection->getConnection();
 
-            $photo_id = $request->photo_id;
-
-            $public = $db->updateOne(
-                ['_id' => new \MongoDB\BSON\ObjectId($photo_id)],
-                ['$set' => ['privacy' => 1]],
-            );
-
-            if ($public) {
-
-                return response()->success(['message' => 'Set To Public'], 201);
-            } else {
-                return response()->error(['message' => 'Something Went Wrong'], 404);
+            $photo_id = new \MongoDB\BSON\ObjectId($request->photo_id);
+            $privacy = $request->privacy;
+            switch ($privacy) {
+                case "hidden":
+                    $public = $db->updateOne(
+                        ['_id' => $photo_id],
+                        ['$set' => ['privacy' => 'hidden',]],
+                    );
+                    return response()->success(['message' => 'Set To Hidden'], 201);
+                    break;
+                case "public":
+                    $public = $db->updateOne(
+                        ['_id' => $photo_id],
+                        ['$set' => ['privacy' => 'public',]],
+                    );
+                    return response()->success(['message' => 'Set To Public'], 201);
+                    break;
+                case "private":
+                    $public = $db->updateOne(
+                        ['_id' => $photo_id],
+                        ['$set' => ['privacy' => 'private',]],
+                    );
+                    return response()->success(['message' => 'Set To Private'], 201);
+                    break;
+                default:
+                    return response()->error(['message' => 'Something Went Wrong'], 404);
             }
+
+            // $public = $db->updateOne(
+            //     ['_id' => new \MongoDB\BSON\ObjectId($photo_id)],
+            //     ['$set' => ['privacy' => 1]],
+            // );
+
+            //     if ($public) {
+
+            //         return response()->success(['message' => 'Set To Public'], 201);
+            //     } else {
+            //         return response()->error(['message' => 'Something Went Wrong'], 404);
+            //     }
         } catch (Exception $e) {
             return response()->error($e->getMessage(), 400);
         }
@@ -117,19 +148,96 @@ class PhotosController extends Controller
 
             $user_id = $decoded_data->data->id;
 
-            $allPhotos = $db->find(
+            $result = $db->find(
                 ['user_id' => $user_id],
             )->toArray();
             // dd($allPhotos);
-            if (!empty($allPhotos)) {
+            // var_dump($allPhotos);
+            if (!empty($result)) {
 
                 return response()->success(
                     [
                         'message' => 'Photo results',
-                        'pics' => $allPhotos,
+                        'pics' => $result,
                     ],
                     200
                 );
+            } else {
+                return response()->error(['message' => 'No Result Found'], 404);
+            }
+        } catch (Exception $e) {
+            return response()->error($e->getMessage(), 400);
+        }
+    }
+
+
+    // Search Photos
+
+    public function searchPhoto(Request $request)
+    {
+        try {
+            $query = $request->all();
+            $token = $request->bearerToken();
+            $jwt = new JwtAuthentication;
+            $decoded_data = $jwt->jwt_decode($token);
+            // dd($decoded_data);
+            // Get Connection
+            $connection = new Database('photos');
+            $db = $connection->getConnection();
+
+            $user_id = $decoded_data->data->id;
+
+            if ($query['type'] === 'privacy') {
+                $result = $db->find(
+                    ['user_id' => $user_id, 'privacy' => $request->privacy],
+                )->toArray();
+                // return $result;
+                if (!empty($result)) {
+
+                    return response()->success(
+                        [
+                            'message' => 'Photo results',
+                            'pics' => $result,
+                        ],
+                        200
+                    );
+                } else {
+                    return response()->error(['message' => 'No Result Found'], 404);
+                }
+            } else if ($query['type'] === 'name') {
+                $result = $db->find(
+                    ['user_id' => $user_id, 'pathInfo.filename' => $request->name],
+                )->toArray();
+                // return $result;
+                if (!empty($result)) {
+
+                    return response()->success(
+                        [
+                            'message' => 'Photo results',
+                            'pics' => $result,
+                        ],
+                        200
+                    );
+                } else {
+                    return response()->error(['message' => 'No Result Found'], 404);
+                }
+            } else if ($query['type'] === 'ext') {
+                $result = $db->find(
+                    ['user_id' => $user_id, 'pathInfo.extension' => $request->ext],
+                )->toArray();
+                // return $result;
+                if (!empty($result)) {
+
+                    return response()->success(
+                        [
+                            'message' => 'Photo results',
+                            'pics' => $result,
+                        ],
+                        200
+                    );
+                } else {
+                    return response()->error(['message' => 'No Result Found'], 404);
+                }
             } else {
                 return response()->error(['message' => 'No Result Found'], 404);
             }

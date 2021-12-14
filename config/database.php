@@ -34,11 +34,11 @@ return [
     */
 
     'connections' => [
-    //     'mongodb' => [
-    //         'driver' => 'mongodb',
-    //         'dsn' => env('DB_URI', 'mongodb+srv://pakistan:pakistan@cluster0.hx6kr.mongodb.net/imageHostingService?retryWrites=true&w=majority'),
-    //         'database' => 'imageHostingService',
-    // ],
+        'mongodb' => [
+            'driver' => 'mongodb',
+            'dsn' => env('DB_URI', 'mongodb+srv://pakistan:pakistan@cluster0.hx6kr.mongodb.net/imageHostingService?retryWrites=true&w=majority'),
+            'database' => 'imageHostingService',
+    ],
 
         'sqlite' => [
             'driver' => 'sqlite',

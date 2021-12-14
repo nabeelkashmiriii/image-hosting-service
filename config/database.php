@@ -36,9 +36,9 @@ return [
     'connections' => [
     //     'mongodb' => [
     //         'driver' => 'mongodb',
-    //         'dsn' => env('DB_URI', 'mongodb+srv://kashmiriii:kashmiriii@image-hosting-service.hx6kr.mongodb.net/myFirstDatabase?retryWrites=true&w=majority'),
+    //         'dsn' => env('DB_URI', 'mongodb+srv://kashmiriii:kashmiriii@image-hosting-service.hx6kr.mongodb.net/test'),
     //         'database' => 'myappdb',
-    //     ],
+    // ],
 
         'sqlite' => [
             'driver' => 'sqlite',
